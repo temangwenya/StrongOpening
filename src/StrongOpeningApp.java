@@ -5,6 +5,7 @@
  * routine creator GUI, active workout logger, and modular scene navigation.
  */
 
+// Imports
 import javafx.application.Application;
 import javafx.animation.AnimationTimer;
 import javafx.geometry.Insets;
@@ -300,13 +301,85 @@ public class StrongOpeningApp extends Application {
         bounceTimer.start();
     }
 
+    /**
+     * Screen: Arcade "READY... FIGHT!" Intro Sequence before Active Workout.
+     */
     private void showActiveWorkoutScreen(Template template) {
+        VBox root = new VBox(20);
+        root.setPadding(new Insets(40));
+        root.setAlignment(Pos.CENTER);
+        root.setStyle("-fx-background-color: #0b0614;");
+
+        Label announcerLabel = new Label("GET READY FOR BATTLE");
+        announcerLabel.setStyle("-fx-font-size: 18px; -fx-text-fill: #00f0ff; -fx-font-weight: bold;");
+
+        Label countLabel = new Label("3");
+        countLabel.setStyle("-fx-font-size: 64px; -fx-font-weight: bold; -fx-text-fill: #ff2a85; -fx-effect: dropshadow(three-pass-box, rgba(255, 42, 133, 0.8), 16, 0.0, 0, 0);");
+
+        Label subAnnounce = new Label("ROUTINE: " + template.getTemplateName().toUpperCase());
+        subAnnounce.setStyle("-fx-font-size: 14px; -fx-text-fill: #e0aaff;");
+
+        root.getChildren().addAll(announcerLabel, countLabel, subAnnounce);
+        createStyledScene(root, 440, 520);
+
+        // Arcade Fighter Match Intro Animation Timer (3 -> 2 -> 1 -> FIGHT!)
+        AnimationTimer matchIntroTimer = new AnimationTimer() {
+            private long lastNanoTime = -1;
+            private int currentCount = 3;
+            private boolean foughtDisplayed = false;
+            private long fightShowTime = -1;
+
+            @Override
+            public void handle(long now) {
+                if (lastNanoTime == -1) {
+                    lastNanoTime = now;
+                    return;
+                }
+
+                if (!foughtDisplayed && now - lastNanoTime >= 1_000_000_000L) { // 1 second intervals
+                    currentCount--;
+                    lastNanoTime = now;
+                    if (currentCount > 0) {
+                        countLabel.setText(String.valueOf(currentCount));
+                    } else if (currentCount == 0) {
+                        countLabel.setText("READY");
+                        countLabel.setStyle("-fx-font-size: 42px; -fx-font-weight: bold; -fx-text-fill: #00f0ff;");
+                    } else {
+                        countLabel.setText("FIGHT!");
+                        countLabel.setStyle("-fx-font-size: 52px; -fx-font-weight: bold; -fx-text-fill: #ff2a85; -fx-effect: dropshadow(three-pass-box, rgba(255, 42, 133, 1), 20, 0, 0, 0);");
+                        foughtDisplayed = true;
+                        fightShowTime = now;
+                    }
+                } else if (foughtDisplayed && now - fightShowTime >= 800_000_000L) { // Hold "FIGHT!" for 0.8s
+                    stop();
+                    showActualWorkoutLogger(template); // Transition to the workout tracking screen
+                }
+            }
+        };
+        matchIntroTimer.start();
+    }
+
+    /**
+     * Active Workout Logger Screen with Rest Timer Overlay capability.
+     */
+    private void showActualWorkoutLogger(Template template) {
         VBox root = new VBox(12);
         root.setPadding(new Insets(20));
         root.setAlignment(Pos.CENTER);
 
-        Label header = new Label("LOGGING: " + template.getTemplateName().toUpperCase());
+        Label header = new Label("FIGHTING: " + template.getTemplateName().toUpperCase());
         header.setStyle("-fx-font-size: 16px; -fx-text-fill: #00f0ff;");
+
+        // Rest Timer Display Component
+        Label restTimerLabel = new Label("REST TIMER: --:--");
+        restTimerLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #ff2a85; -fx-font-weight: bold;");
+
+        Button rest60Btn = new Button("START 60S REST");
+        rest60Btn.setStyle("-fx-font-size: 10px; -fx-background-color: #1a0b2e; -fx-text-fill: #00f0ff; -fx-border-color: #00f0ff;");
+        rest60Btn.setOnAction(e -> startRestCountdown(restTimerLabel, 60));
+
+        HBox restBox = new HBox(10, restTimerLabel, rest60Btn);
+        restBox.setAlignment(Pos.CENTER);
 
         VBox exercisesContainer = new VBox(12);
         List<ExerciseInputRow> inputRows = new ArrayList<>();
@@ -331,7 +404,7 @@ public class StrongOpeningApp extends Application {
 
         ScrollPane scrollPane = new ScrollPane(exercisesContainer);
         scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(280);
+        scrollPane.setPrefHeight(250);
 
         Button finishBtn = new Button("COMMIT & SAVE WORKOUT");
         finishBtn.setMaxWidth(Double.MAX_VALUE);
@@ -357,11 +430,37 @@ public class StrongOpeningApp extends Application {
         backBtn.setMaxWidth(Double.MAX_VALUE);
         backBtn.setOnAction(e -> showTemplateSelector());
 
-        root.getChildren().addAll(header, scrollPane, finishBtn, backBtn);
+        root.getChildren().addAll(header, restBox, scrollPane, finishBtn, backBtn);
 
-        createStyledScene(root, 440, 520);
+        createStyledScene(root, 440, 540);
     }
 
+    /**
+     * Arcade Rest Timer Countdown Helper.
+     */
+    private void startRestCountdown(Label timerLabel, int secondsTotal) {
+        final int[] timeLeft = {secondsTotal};
+        AnimationTimer restTimer = new AnimationTimer() {
+            private long lastUpdate = 0;
+            @Override
+            public void handle(long now) {
+                if (now - lastUpdate >= 1_000_000_000L) {
+                    if (timeLeft[0] > 0) {
+                        timerLabel.setText(String.format("REST TIMER: 00:%02d", timeLeft[0]));
+                        timerLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #ff2a85; -fx-font-weight: bold;");
+                        timeLeft[0]--;
+                    } else {
+                        timerLabel.setText("REST OVER // FIGHT!");
+                        timerLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #00f0ff; -fx-font-weight: bold;");
+                        stop();
+                    }
+                    lastUpdate = now;
+                }
+            }
+        };
+        restTimer.start();
+    }
+ 
     private void showHistoryScreen() {
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
