@@ -10,9 +10,9 @@ Plus, we're building it with a modular architecture so we can hook it up to phys
 * **Retro Fighting Game Landing Screen**: Features glowing neon gradients, drop-shadow typography, and a pulsing, classic arcade cabinet "PRESS START" prompt.
 * **Fighter-Select Routine Dashboard**: Pick your training routine module with an interactive card that snaps, slides, and spring-bounces into place just like selecting a character before a match.
 * **Active Workout Telemetry Logger**: Dynamically generates input nodes for your routine's mapped exercises to record weight and reps.
-* **Transactional Session Persistence**: Securely logs completed sets and sessions into a local SQLite database using atomic database transactions (`DatabaseManager.logWorkout`)[cite: 1, 2].
-* **All-Time Peak Metrics (PR Tracker)**: Automatically computes and lists your all-time personal records using SQL `MAX` weight aggregations (`DatabaseManager.getPersonalRecords`)[cite: 1, 2].
-* **Archived Telemetry (History Logbook)**: Inspect past performance entries sorted chronologically by session date (`DatabaseManager.getWorkoutHistory`)[cite: 1, 2].
+* **Transactional Session Persistence**: Securely logs completed sets and sessions into a local SQLite database using atomic database transactions (`DatabaseManager.logWorkout`)
+* **All-Time Peak Metrics (PR Tracker)**: Automatically computes and lists your all-time personal records using SQL `MAX` weight aggregations (`DatabaseManager.getPersonalRecords`)
+* **Archived Telemetry (History Logbook)**: Inspect past performance entries sorted chronologically by session date (`DatabaseManager.getWorkoutHistory`)
 * **Custom Exercise Matrix**: Register brand-new custom lifts directly into your local database core memory.
 
 ## 📸 Output & Interface Gallery
@@ -64,11 +64,10 @@ The application is built using clean Object-Oriented Programming principles, sep
 *Instructions on running the local Java application will be added as development progresses.*
 No tedious terminal commands required to boot the arcade cabinet. Everything is handled via the root automation script.
 
-### 1. Prerequisites
+#### 1. Prerequisites
 Make sure you have Java 17 installed and your JavaFX libraries placed in a `lib/` folder at the root of the project.
 
-### 2. Grant Execution Permissions (One-time setup)
-### 2. Grant Execution Permissions (One-time setup)
+#### 2. Grant Execution Permissions (One-time setup)
 Open your terminal in the project root folder and make the launcher script executable:
 ```
 ```bash
@@ -77,7 +76,9 @@ chmod +x run.sh
 
 ## 📄 License
 
-
+---
+## 🤖 Acknowledgements
+Built rapidly with the assistance of AI (Gemini). I just wanted I just wanted the app done ASAP so i can track my stuff.
 
 ---
 
@@ -85,7 +86,7 @@ chmod +x run.sh
 **Student Developer**  
 **Academic Project**  
 **Course:** BSc IT - Software Engineering  
-**Module:** Procedural Programming 
+**Module:** Vibes
 
 ---
 
