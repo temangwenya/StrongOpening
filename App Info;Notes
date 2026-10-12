@@ -1,0 +1,17 @@
+# StrongOpening App Information & Personal Notes
+
+### Current Process
+
+
+
+## Future Features
+ * When user starts workout:
+    - changes screen to an animated count down clock of 3 seconds then starts arcade game style like ready fight type
+    - after countdiwn, switch to screen for tracking current workout. 
+        + has simplified check offs/side swipe
+        + has timer option for between sets or between excersises
+ * Options to add warm up sets and they have their own timers and reps and sets
+ * Option to have notes attached to workouts
+ * Media displaying how workout is supposed to be done
+ * Camera tracks body movement to see whether form is good or no
+ * Option to set a weakly goal then you get a progress bar correlating to how well you've been doing
