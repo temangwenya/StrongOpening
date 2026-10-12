@@ -298,6 +298,101 @@ public class DatabaseManager {
         return exercises;
     }
 
+    public static class WorkoutHistoryItem {
+        public String date;
+        public String templateName;
+        public String exerciseName;
+        public int setNumber;
+        public double weight;
+        public int reps;
+
+        public WorkoutHistoryItem(String date, String templateName, String exerciseName, int setNumber, double weight, int reps) {
+            this.date = date;
+            this.templateName = templateName;
+            this.exerciseName = exerciseName;
+            this.setNumber = setNumber;
+            this.weight = weight;
+            this.reps = reps;
+        }
+    }
+
+    public static List<WorkoutHistoryItem> getWorkoutHistory() {
+        List<WorkoutHistoryItem> history = new ArrayList<>();
+        String sql = "SELECT wl.date, t.template_name, e.name AS exercise_name, ws.set_number, ws.weight, ws.reps " +
+                     "FROM workout_logs wl " +
+                     "JOIN templates t ON wl.template_id = t.id " +
+                     "JOIN workout_sets ws ON wl.id = ws.workout_log_id " +
+                     "JOIN exercises e ON ws.exercise_id = e.id " +
+                     "ORDER BY wl.date DESC, wl.id DESC;";
+
+        try (Connection conn = connect();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                history.add(new WorkoutHistoryItem(
+                    rs.getString("date"),
+                    rs.getString("template_name"),
+                    rs.getString("exercise_name"),
+                    rs.getInt("set_number"),
+                    rs.getDouble("weight"),
+                    rs.getInt("reps")
+                ));
+            }
+            System.out.println("Loaded " + history.size() + " past set records.");
+
+        } catch (SQLException e) {
+            System.out.println("Error fetching workout history: " + e.getMessage());
+        }
+
+        return history;
+    }
+
+    public static void deleteTemplate(int templateId) {
+    String sqlDeleteTE = "DELETE FROM template_exercises WHERE template_id = ?;";
+    String sqlDeleteTemplate = "DELETE FROM templates WHERE id = ?;";
+
+    try (Connection conn = connect()) {
+        conn.setAutoCommit(false);
+
+        try (PreparedStatement pstmtTE = conn.prepareStatement(sqlDeleteTE);
+             PreparedStatement pstmtTemplate = conn.prepareStatement(sqlDeleteTemplate)) {
+
+            // 1. Delete links to exercises first (foreign key dependency)
+            pstmtTE.setInt(1, templateId);
+            pstmtTE.executeUpdate();
+
+            // 2. Delete the template itself
+            pstmtTemplate.setInt(1, templateId);
+            pstmtTemplate.executeUpdate();
+
+            conn.commit();
+            System.out.println("Template successfully deleted.");
+        } catch (SQLException e) {
+            conn.rollback();
+            System.out.println("Error deleting template, transaction rolled back: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            conn.setAutoCommit(true);
+        }
+    } catch (SQLException e) {
+        System.out.println("Database connection error: " + e.getMessage());
+    }
+}
+
+    public static void addExercise(String name) {
+        String sql = "INSERT INTO exercises(name) VALUES(?);";
+        try (Connection conn = connect();
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.executeUpdate();
+            System.out.println("Exercise added successfully: " + name);
+        } catch (SQLException e) {
+            System.out.println("Error adding exercise: " + e.getMessage());
+        }
+    }
+
+
 
 
     // Quick test main method

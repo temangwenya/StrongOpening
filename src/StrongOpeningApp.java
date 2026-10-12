@@ -22,15 +22,14 @@ public class StrongOpeningApp extends Application {
 
         showTemplateSelector();
     }
-
-    // Screen 1: Pick a routine to start
+    
+    // Screen 1: Pick a routine to start, delete, view history, or add exercises
     private void showTemplateSelector() {
         List<Template> templates = DatabaseManager.getAllTemplates();
 
         ListView<Template> listView = new ListView<>();
         listView.getItems().addAll(templates);
         
-        // Custom cell factory so it displays the template name nicely
         listView.setCellFactory(param -> new ListCell<>() {
             @Override
             protected void updateItem(Template item, boolean empty) {
@@ -46,14 +45,71 @@ public class StrongOpeningApp extends Application {
         Button startWorkoutBtn = new Button("Start Selected Routine");
         startButtonAction(listView, startWorkoutBtn);
 
+        Button deleteBtn = new Button("Delete Selected Routine");
+        deleteBtn.setOnAction(e -> {
+            Template selectedTemplate = listView.getSelectionModel().getSelectedItem();
+            if (selectedTemplate != null) {
+                DatabaseManager.deleteTemplate(selectedTemplate.getId());
+                showAlert("Success", "Template deleted successfully!");
+                showTemplateSelector(); // Refresh the list view
+            } else {
+                showAlert("Selection Error", "Please select a routine to delete!");
+            }
+        });
+
+        Button historyBtn = new Button("View Workout History");
+        historyBtn.setOnAction(e -> showHistoryScreen());
+
+        Button addExerciseBtn = new Button("Add Custom Exercise");
+        addExerciseBtn.setOnAction(e -> showAddExerciseScreen());
+
         VBox root = new VBox(10);
         root.setPadding(new Insets(15));
-        root.getChildren().addAll(new Label("Select a Workout Routine:"), listView, startWorkoutBtn);
+        root.getChildren().addAll(
+            new Label("Select a Workout Routine:"), 
+            listView, 
+            startWorkoutBtn, 
+            deleteBtn, 
+            historyBtn, 
+            addExerciseBtn
+        );
 
-        Scene scene = new Scene(root, 400, 350);
+        Scene scene = new Scene(root, 400, 450);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
+
+
+    // Screen 3: Workout History Logbook View
+    private void showHistoryScreen() {
+        VBox root = new VBox(10);
+        root.setPadding(new Insets(15));
+
+        Label header = new Label("Past Workout History");
+        header.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        List<DatabaseManager.WorkoutHistoryItem> historyItems = DatabaseManager.getWorkoutHistory();
+
+        ListView<String> historyListView = new ListView<>();
+        if (historyItems.isEmpty()) {
+            historyListView.getItems().add("No workouts logged yet. Go lift!");
+        } else {
+            for (DatabaseManager.WorkoutHistoryItem item : historyItems) {
+                String entry = String.format("[%s] %s -> %s (Set %d: %.1f lbs x %d reps)", 
+                    item.date, item.templateName, item.exerciseName, item.setNumber, item.weight, item.reps);
+                historyListView.getItems().add(entry);
+            }
+        }
+
+        Button backBtn = new Button("Back to Routines");
+        backBtn.setOnAction(e -> showTemplateSelector());
+
+        root.getChildren().addAll(header, historyListView, backBtn);
+
+        Scene scene = new Scene(root, 500, 400);
+        primaryStage.setScene(scene);
+    }
+
 
     private void startButtonAction(ListView<Template> listView, Button btn) {
         btn.setOnAction(e -> {
@@ -138,6 +194,40 @@ public class StrongOpeningApp extends Application {
         alert.setContentText(message);
         alert.showAndWait();
     }
+
+    // Screen 4: Add Custom Exercise Form
+    private void showAddExerciseScreen() {
+        VBox root = new VBox(10);
+        root.setPadding(new Insets(15));
+
+        Label header = new Label("Add New Exercise");
+        header.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        TextField nameField = new TextField();
+        nameField.setPromptText("Exercise name (e.g., Incline Bench Press)");
+
+        Button saveBtn = new Button("Save Exercise");
+        saveBtn.setOnAction(e -> {
+            String name = nameField.getText().trim();
+            if (!name.isEmpty()) {
+                DatabaseManager.addExercise(name);
+                showAlert("Success", "Exercise added successfully!");
+                showTemplateSelector(); // Return to main menu
+            } else {
+                showAlert("Error", "Exercise name cannot be empty.");
+            }
+        });
+
+        Button backBtn = new Button("Back to Routines");
+        backBtn.setOnAction(e -> showTemplateSelector());
+
+        root.getChildren().addAll(header, new Label("Exercise Name:"), nameField, saveBtn, backBtn);
+
+        Scene scene = new Scene(root, 400, 300);
+        primaryStage.setScene(scene);
+    }
+
+
 
     // Helper class to hold UI references
     private static class ExerciseInputRow {
