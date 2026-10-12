@@ -4,6 +4,11 @@
  * workouts, template deletions, and Personal Record (PR) analytics for the StrongOpening application.
  */
 
+// Imports
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -14,13 +19,8 @@ import java.time.LocalDate;
 import java.util.*;
 
 public class DatabaseManager {
-    // Local SQLite database file URL
     private static final String URL = "jdbc:sqlite:strongopening.db";
 
-    /**
-     * Establishes a connection to the local SQLite database.
-     * @return Connection object, or null if connection fails.
-     */
     public static Connection connect() {
         Connection conn = null;
         try {
@@ -32,9 +32,6 @@ public class DatabaseManager {
         return conn;
     }
 
-    /**
-     * Creates all required relational database tables if they do not already exist.
-     */
     public static void createTables() {
         String sqlExercises = "CREATE TABLE IF NOT EXISTS exercises (\n"
                 + "    id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
@@ -91,15 +88,12 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Creates a new routine template and maps selected exercises to it within a transaction.
-     */
     public static boolean createTemplate(String templateName, List<Integer> exerciseIds) {
         String insertTemplateSql = "INSERT INTO templates (template_name) VALUES (?)";
         String insertMappingSql = "INSERT INTO template_exercises (template_id, exercise_id) VALUES (?, ?)";
 
         try (Connection conn = connect()) {
-            conn.setAutoCommit(false); // Begin transaction
+            conn.setAutoCommit(false);
 
             int templateId = -1;
             try (PreparedStatement stmt = conn.prepareStatement(insertTemplateSql, Statement.RETURN_GENERATED_KEYS)) {
@@ -124,7 +118,7 @@ public class DatabaseManager {
                 }
             }
 
-            conn.commit(); // Commit transaction
+            conn.commit();
             return true;
         } catch (SQLException e) {
             System.out.println("Error creating routine template: " + e.getMessage());
@@ -132,10 +126,57 @@ public class DatabaseManager {
         }
     }
 
-    
-    /**
-     * Inserts a new exercise into the database.
-     */
+    public static boolean createTemplateDetailed(String templateName, List<TemplateExerciseConfig> configs) {
+        String insertTemplateSql = "INSERT INTO templates (template_name) VALUES (?)";
+        String insertMappingSql = "INSERT INTO template_exercises (template_id, exercise_id, default_sets) VALUES (?, ?, ?)";
+
+        try (Connection conn = connect()) {
+            conn.setAutoCommit(false);
+
+            int templateId = -1;
+            try (PreparedStatement stmt = conn.prepareStatement(insertTemplateSql, Statement.RETURN_GENERATED_KEYS)) {
+                stmt.setString(1, templateName);
+                stmt.executeUpdate();
+                
+                try (ResultSet rs = stmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        templateId = rs.getInt(1);
+                    }
+                }
+            }
+
+            if (templateId != -1) {
+                try (PreparedStatement mappingStmt = conn.prepareStatement(insertMappingSql)) {
+                    for (TemplateExerciseConfig config : configs) {
+                        mappingStmt.setInt(1, templateId);
+                        mappingStmt.setInt(2, config.exerciseId);
+                        mappingStmt.setInt(3, config.timerSeconds);
+                        mappingStmt.addBatch();
+                    }
+                    mappingStmt.executeBatch();
+                }
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            System.out.println("Error creating detailed routine template: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public static class TemplateExerciseConfig {
+        public int exerciseId;
+        public int timerSeconds;
+        public List<String> setTypes;
+
+        public TemplateExerciseConfig(int exerciseId, int timerSeconds, List<String> setTypes) {
+            this.exerciseId = exerciseId;
+            this.timerSeconds = timerSeconds;
+            this.setTypes = setTypes;
+        }
+    }
+
     public static void insertExercise(String name, String muscleGroup, String mediaPath) {
         String sql = "INSERT INTO exercises(name, muscle_group, media_path) VALUES(?, ?, ?);";
 
@@ -153,16 +194,10 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Overloaded method to add a custom exercise with just a name from the GUI.
-     */
     public static void addExercise(String name) {
         insertExercise(name, "General", null);
     }
 
-    /**
-     * Retrieves all exercises available in the database.
-     */
     public static List<Exercise> getAllExercises() {
         List<Exercise> exercises = new ArrayList<>();
         String sql = "SELECT id, name, muscle_group, media_path FROM exercises;";
@@ -186,9 +221,6 @@ public class DatabaseManager {
         return exercises;
     }
 
-    /**
-     * Logs a completed workout session and its corresponding sets using a transactional block.
-     */
     public static void logWorkout(int templateId, List<WorkoutSetData> setsToLog) {
         String sqlLog = "INSERT INTO workout_logs(template_id, date) VALUES(?, ?);";
         String sqlSet = "INSERT INTO workout_sets(workout_log_id, exercise_id, set_number, weight, reps) VALUES(?, ?, ?, ?, ?);";
@@ -234,9 +266,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Retrieves all workout templates along with their mapped exercises.
-     */
     public static List<Template> getAllTemplates() {
         List<Template> templates = new ArrayList<>();
         String sqlTemplate = "SELECT id, template_name FROM templates;";
@@ -285,9 +314,6 @@ public class DatabaseManager {
         return exercises;
     }
 
-    /**
-     * Data transfer object representing historical workout items.
-     */
     public static class WorkoutHistoryItem {
         public String date;
         public String templateName;
@@ -306,9 +332,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Fetches detailed workout history sorted by latest date.
-     */
     public static List<WorkoutHistoryItem> getWorkoutHistory() {
         List<WorkoutHistoryItem> history = new ArrayList<>();
         String sql = "SELECT wl.date, t.template_name, e.name AS exercise_name, ws.set_number, ws.weight, ws.reps " +
@@ -339,9 +362,6 @@ public class DatabaseManager {
         return history;
     }
 
-    /**
-     * Safely deletes a routine template and cleans up foreign key dependencies using transactions.
-     */
     public static void deleteTemplate(int templateId) {
         String sqlDeleteTE = "DELETE FROM template_exercises WHERE template_id = ?;";
         String sqlDeleteTemplate = "DELETE FROM templates WHERE id = ?;";
@@ -371,9 +391,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Personal Record model to hold max weight aggregates per exercise.
-     */
     public static class PersonalRecord {
         public String exerciseName;
         public double maxWeight;
@@ -384,9 +401,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Calculates all-time personal records (maximum weight lifted) per exercise.
-     */
     public static List<PersonalRecord> getPersonalRecords() {
         List<PersonalRecord> prs = new ArrayList<>();
         String sql = "SELECT e.name AS exercise_name, MAX(ws.weight) AS max_weight " +
@@ -411,4 +425,48 @@ public class DatabaseManager {
 
         return prs;
     }
+
+    /**
+     * Imports exercises from API Ninjas into the local SQLite database.
+     * (Requires a free API key from api-ninjas.com)
+     */
+    public static void importExercisesFromApi(String apiKey, String muscleGroup) {
+    String urlString = "https://api.api-ninjas.com/v1/exercises?muscle=" + muscleGroup;
+
+    try {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(urlString))
+                .header("X-Api-Key", apiKey)
+                .GET()
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            String json = response.body();
+            String[] items = json.split("\\},\\{");
+            int count = 0;
+            
+            for (String item : items) {
+                if (item.contains("\"name\":")) {
+                    int startIdx = item.indexOf("\"name\":\"") + 8;
+                    int endIdx = item.indexOf("\"", startIdx);
+                    if (startIdx != -1 && endIdx != -1) {
+                        String exerciseName = item.substring(startIdx, endIdx);
+                        insertExercise(exerciseName, muscleGroup, null);
+                        count++;
+                    }
+                }
+            }
+            System.out.println("Successfully imported " + count + " exercises for " + muscleGroup + "!");
+        } else {
+            System.out.println("API request failed with status code: " + response.statusCode());
+        }
+    } catch (Exception e) {
+        System.out.println("Error connecting to Exercise API: " + e.getMessage());
+    }
+}
+
+
 }

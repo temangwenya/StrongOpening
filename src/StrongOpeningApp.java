@@ -2,7 +2,7 @@
  * File Info:
  * Main JavaFX Application class for StrongOpening. Features a Tokyo Arcade synthwave 
  * aesthetic, retro fighting game landing screen, interactive fighter-select bounce cards, 
- * routine creator GUI, active workout logger, and modular scene navigation.
+ * advanced routine compiler, match countdown, and active workout tracking.
  */
 
 // Imports
@@ -33,10 +33,6 @@ public class StrongOpeningApp extends Application {
         showLandingScreen();
     }
 
-    /**
-     * Landing Screen: Retro arcade fighting game title screen with 
-     * intense cyberpunk gradients, glowing title text, and a flashing "PRESS START" prompt.
-     */
     private void showLandingScreen() {
         VBox root = new VBox(25);
         root.setPadding(new Insets(40));
@@ -98,9 +94,6 @@ public class StrongOpeningApp extends Application {
         createStyledScene(root, 440, 520);
     }
  
-    /**
-     * Screen 1: Main arcade dashboard featuring fighter-select slide-and-bounce mechanics.
-     */
     private void showTemplateSelector() {
         List<Template> templates = DatabaseManager.getAllTemplates();
 
@@ -111,7 +104,6 @@ public class StrongOpeningApp extends Application {
         Label titleLabel = new Label("SYSTEM: SELECT FIGHTER ROUTINE");
         titleLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #ff2a85;");
 
-        // --- Arcade Character / Routine Preview Card (Slide & Bounce) ---
         VBox characterCard = new VBox(8);
         characterCard.setAlignment(Pos.CENTER);
         characterCard.setPadding(new Insets(15));
@@ -131,7 +123,6 @@ public class StrongOpeningApp extends Application {
 
         characterCard.getChildren().addAll(cardTitle, cardDetails);
 
-        // --- Routine List View Component ---
         ListView<Template> listView = new ListView<>();
         listView.getItems().addAll(templates);
         listView.setPrefHeight(130);
@@ -156,7 +147,6 @@ public class StrongOpeningApp extends Application {
             }
         });
 
-        // --- Action Buttons ---
         Button startWorkoutBtn = new Button("START WORKOUT");
         startWorkoutBtn.setMaxWidth(Double.MAX_VALUE);
         startButtonAction(listView, startWorkoutBtn);
@@ -191,7 +181,6 @@ public class StrongOpeningApp extends Application {
             }
         });
 
-        // Structured 3x2 Grid for Dashboard Controls
         GridPane buttonGrid = new GridPane();
         buttonGrid.setHgap(10);
         buttonGrid.setVgap(10);
@@ -208,58 +197,102 @@ public class StrongOpeningApp extends Application {
         createStyledScene(root, 440, 660);
     }
 
-    /**
-     * Screen 2: Routine Creator GUI.
-     * Allows building custom workout templates by specifying a routine name and selecting exercises.
-     */
+    private static class RoutineExerciseRow {
+        Exercise exercise;
+        int restTimerSeconds = 60;
+        VBox setsContainer = new VBox(5);
+        List<String> setTypes = new ArrayList<>();
+        Label timerDisplayLabel;
+
+        public RoutineExerciseRow(Exercise exercise) {
+            this.exercise = exercise;
+            setTypes.add("WARMUP");
+            setTypes.add("WORK");
+        }
+    }
+
     private void showCreateRoutineScreen() {
-        VBox root = new VBox(15);
+        VBox root = new VBox(12);
         root.setPadding(new Insets(20));
         root.setAlignment(Pos.CENTER);
 
-        Label header = new Label("CONSTRUCT NEW ROUTINE MODULE");
-        header.setStyle("-fx-font-size: 14px; -fx-text-fill: #ff2a85;");
+        Label header = new Label("ADVANCED ROUTINE COMPILER");
+        header.setStyle("-fx-font-size: 16px; -fx-text-fill: #ff2a85; -fx-font-weight: bold;");
 
         TextField routineNameField = new TextField();
         routineNameField.setPromptText("ROUTINE TITLE (E.G. PUSH DAY A)");
 
-        Label selectLabel = new Label("SELECT EXERCISES TO INCLUDE:");
+        HBox quickAddBox = new HBox(8);
+        quickAddBox.setAlignment(Pos.CENTER);
+        TextField newExNameField = new TextField();
+        newExNameField.setPromptText("NEW EXERCISE NAME");
+        Button addNewExBtn = new Button("+ ADD EXERCISE");
+        addNewExBtn.setStyle("-fx-background-color: #1a0b2e; -fx-text-fill: #00f0ff; -fx-border-color: #00f0ff;");
         
-        List<Exercise> allExercises = DatabaseManager.getAllExercises();
-        ListView<CheckBox> exerciseListView = new ListView<>();
-        
-        for (Exercise ex : allExercises) {
-            CheckBox cb = new CheckBox(ex.getName().toUpperCase() + " (" + ex.getMuscleGroup() + ")");
-            cb.setUserData(ex.getId());
-            cb.setStyle("-fx-text-fill: #00f0ff; -fx-font-family: 'Courier New', monospace;");
-            exerciseListView.getItems().add(cb);
-        }
-        exerciseListView.setPrefHeight(180);
+        quickAddBox.getChildren().addAll(newExNameField, addNewExBtn);
 
-        Button saveBtn = new Button("BUILD ROUTINE MODULE");
-        saveBtn.setMaxWidth(Double.MAX_VALUE);
-        saveBtn.setOnAction(e -> {
+        ComboBox<Exercise> exerciseComboBox = new ComboBox<>();
+        refreshExerciseComboBox(exerciseComboBox);
+
+        Button addSelectedExBtn = new Button("INCLUDE EXERCISE IN ROUTINE");
+        addSelectedExBtn.setMaxWidth(Double.MAX_VALUE);
+
+        VBox routineExercisesContainer = new VBox(10);
+        List<RoutineExerciseRow> routineRows = new ArrayList<>();
+
+        addNewExBtn.setOnAction(e -> {
+            String name = newExNameField.getText().trim();
+            if (!name.isEmpty()) {
+                DatabaseManager.addExercise(name);
+                newExNameField.clear();
+                refreshExerciseComboBox(exerciseComboBox);
+                showAlert("SUCCESS", "Registered new exercise to core memory!");
+            } else {
+                showAlert("ERROR", "Exercise name cannot be empty.");
+            }
+        });
+
+        addSelectedExBtn.setOnAction(e -> {
+            Exercise selected = exerciseComboBox.getValue();
+            if (selected != null) {
+                RoutineExerciseRow row = new RoutineExerciseRow(selected);
+                routineRows.add(row);
+                
+                VBox card = renderExerciseConfigCard(row, routineRows, routineExercisesContainer);
+                routineExercisesContainer.getChildren().add(card);
+            } else {
+                showAlert("SELECTION ERROR", "Choose an exercise from the drop-down list.");
+            }
+        });
+
+        ScrollPane scrollPane = new ScrollPane(routineExercisesContainer);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(260);
+
+        Button saveRoutineBtn = new Button("BUILD & SAVE ROUTINE MODULE");
+        saveRoutineBtn.setMaxWidth(Double.MAX_VALUE);
+        saveRoutineBtn.setOnAction(e -> {
             String name = routineNameField.getText().trim();
-            List<Integer> selectedIds = new ArrayList<>();
-            
-            for (CheckBox cb : exerciseListView.getItems()) {
-                if (cb.isSelected()) {
-                    selectedIds.add((Integer) cb.getUserData());
-                }
+            if (name.isEmpty()) {
+                showAlert("ERROR", "Please enter a routine title.");
+                return;
+            }
+            if (routineRows.isEmpty()) {
+                showAlert("ERROR", "Add at least one exercise to the routine.");
+                return;
             }
 
-            if (name.isEmpty()) {
-                showAlert("ERROR", "Routine title cannot be blank.");
-            } else if (selectedIds.isEmpty()) {
-                showAlert("ERROR", "Select at least one exercise for the routine.");
+            List<DatabaseManager.TemplateExerciseConfig> configs = new ArrayList<>();
+            for (RoutineExerciseRow r : routineRows) {
+                configs.add(new DatabaseManager.TemplateExerciseConfig(r.exercise.getId(), r.restTimerSeconds, r.setTypes));
+            }
+
+            boolean success = DatabaseManager.createTemplateDetailed(name, configs);
+            if (success) {
+                showAlert("SUCCESS", "Routine compiled and stored in core memory!");
+                showTemplateSelector();
             } else {
-                boolean success = DatabaseManager.createTemplate(name, selectedIds);
-                if (success) {
-                    showAlert("SUCCESS", "Routine module successfully compiled into core memory!");
-                    showTemplateSelector();
-                } else {
-                    showAlert("DATABASE ERROR", "Failed to compile routine module.");
-                }
+                showAlert("DATABASE ERROR", "Failed to compile routine module.");
             }
         });
 
@@ -267,14 +300,99 @@ public class StrongOpeningApp extends Application {
         backBtn.setMaxWidth(Double.MAX_VALUE);
         backBtn.setOnAction(e -> showTemplateSelector());
 
-        root.getChildren().addAll(header, routineNameField, selectLabel, exerciseListView, saveBtn, backBtn);
+        root.getChildren().addAll(header, routineNameField, quickAddBox, new HBox(10, exerciseComboBox, addSelectedExBtn), scrollPane, saveRoutineBtn, backBtn);
 
-        createStyledScene(root, 440, 540);
+        createStyledScene(root, 480, 680);
     }
 
-    /**
-     * Arcade Fighter Select Slide & Bounce Animation Helper.
-     */
+    private VBox renderExerciseConfigCard(RoutineExerciseRow row, List<RoutineExerciseRow> allRows, VBox container) {
+        VBox card = new VBox(8);
+        card.setStyle("-fx-background-color: #120926; -fx-border-color: #00f0ff; -fx-border-width: 1px; -fx-padding: 10px;");
+
+        Label title = new Label(row.exercise.getName().toUpperCase());
+        title.setStyle("-fx-text-fill: #ff2a85; -fx-font-weight: bold;");
+
+        row.timerDisplayLabel = new Label("REST TIMER: " + row.restTimerSeconds + "S");
+        row.timerDisplayLabel.setStyle("-fx-text-fill: #e0aaff; -fx-font-size: 11px;");
+
+        Button minus10Btn = new Button("-10S");
+        minus10Btn.setStyle("-fx-font-size: 10px;");
+        minus10Btn.setOnAction(e -> {
+            if (row.restTimerSeconds >= 10) {
+                row.restTimerSeconds -= 10;
+                row.timerDisplayLabel.setText("REST TIMER: " + row.restTimerSeconds + "S");
+            }
+        });
+
+        Button plus10Btn = new Button("+10S");
+        plus10Btn.setStyle("-fx-font-size: 10px;");
+        plus10Btn.setOnAction(e -> {
+            row.restTimerSeconds += 10;
+            row.timerDisplayLabel.setText("REST TIMER: " + row.restTimerSeconds + "S");
+        });
+
+        HBox timerControls = new HBox(8, row.timerDisplayLabel, minus10Btn, plus10Btn);
+        timerControls.setAlignment(Pos.CENTER_LEFT);
+
+        Button addWarmupBtn = new Button("+ WARMUP");
+        Button addWorkBtn = new Button("+ WORK");
+        Button addDropBtn = new Button("+ DROP");
+        Button addFailBtn = new Button("+ FAILURE");
+
+        addWarmupBtn.setStyle("-fx-font-size: 9px;");
+        addWorkBtn.setStyle("-fx-font-size: 9px;");
+        addDropBtn.setStyle("-fx-font-size: 9px;");
+        addFailBtn.setStyle("-fx-font-size: 9px;");
+
+        addWarmupBtn.setOnAction(e -> { row.setTypes.add("WARMUP"); updateSetsUI(row); });
+        addWorkBtn.setOnAction(e -> { row.setTypes.add("WORK"); updateSetsUI(row); });
+        addDropBtn.setOnAction(e -> { row.setTypes.add("DROP"); updateSetsUI(row); });
+        addFailBtn.setOnAction(e -> { row.setTypes.add("FAILURE"); updateSetsUI(row); });
+
+        HBox setButtons = new HBox(5, addWarmupBtn, addWorkBtn, addDropBtn, addFailBtn);
+
+        Button removeExBtn = new Button("REMOVE EXERCISE");
+        removeExBtn.setStyle("-fx-border-color: #ff3333; -fx-text-fill: #ff3333; -fx-font-size: 10px;");
+        removeExBtn.setOnAction(e -> {
+            allRows.remove(row);
+            container.getChildren().remove(card);
+        });
+
+        updateSetsUI(row);
+
+        card.getChildren().addAll(new HBox(15, title, removeExBtn), timerControls, setButtons, row.setsContainer);
+        return card;
+    }
+
+    private void updateSetsUI(RoutineExerciseRow row) {
+        row.setsContainer.getChildren().clear();
+        for (int i = 0; i < row.setTypes.size(); i++) {
+            final int index = i;
+            String type = row.setTypes.get(i);
+            Label setLabel = new Label("SET " + (i + 1) + " [" + type + "]");
+            setLabel.setStyle("-fx-text-fill: #00f0ff; -fx-font-size: 11px;");
+
+            Button deleteSetBtn = new Button("X");
+            deleteSetBtn.setStyle("-fx-text-fill: #ff3333; -fx-font-size: 9px; -fx-padding: 2px 5px;");
+            deleteSetBtn.setOnAction(e -> {
+                row.setTypes.remove(index);
+                updateSetsUI(row);
+            });
+
+            HBox setRow = new HBox(8, setLabel, deleteSetBtn);
+            setRow.setAlignment(Pos.CENTER_LEFT);
+            row.setsContainer.getChildren().add(setRow);
+        }
+    }
+
+    private void refreshExerciseComboBox(ComboBox<Exercise> combo) {
+        combo.getItems().clear();
+        combo.getItems().addAll(DatabaseManager.getAllExercises());
+        if (!combo.getItems().isEmpty()) {
+            combo.getSelectionModel().selectFirst();
+        }
+    }
+
     private void playArcadeBounceAnimation(VBox card) {
         AnimationTimer bounceTimer = new AnimationTimer() {
             private long startTime = -1;
@@ -301,9 +419,6 @@ public class StrongOpeningApp extends Application {
         bounceTimer.start();
     }
 
-    /**
-     * Screen: Arcade "READY... FIGHT!" Intro Sequence before Active Workout.
-     */
     private void showActiveWorkoutScreen(Template template) {
         VBox root = new VBox(20);
         root.setPadding(new Insets(40));
@@ -322,7 +437,6 @@ public class StrongOpeningApp extends Application {
         root.getChildren().addAll(announcerLabel, countLabel, subAnnounce);
         createStyledScene(root, 440, 520);
 
-        // Arcade Fighter Match Intro Animation Timer (3 -> 2 -> 1 -> FIGHT!)
         AnimationTimer matchIntroTimer = new AnimationTimer() {
             private long lastNanoTime = -1;
             private int currentCount = 3;
@@ -336,7 +450,7 @@ public class StrongOpeningApp extends Application {
                     return;
                 }
 
-                if (!foughtDisplayed && now - lastNanoTime >= 1_000_000_000L) { // 1 second intervals
+                if (!foughtDisplayed && now - lastNanoTime >= 1_000_000_000L) {
                     currentCount--;
                     lastNanoTime = now;
                     if (currentCount > 0) {
@@ -350,18 +464,18 @@ public class StrongOpeningApp extends Application {
                         foughtDisplayed = true;
                         fightShowTime = now;
                     }
-                } else if (foughtDisplayed && now - fightShowTime >= 800_000_000L) { // Hold "FIGHT!" for 0.8s
+                } else if (foughtDisplayed && now - fightShowTime >= 800_000_000L) {
                     stop();
-                    showActualWorkoutLogger(template); // Transition to the workout tracking screen
+                    showActualWorkoutLogger(template);
                 }
             }
         };
         matchIntroTimer.start();
     }
 
-   /**
-     * Active Workout Logger Screen with Warm-Up Sets and Rest Timer Overlay.
-     */
+    private int activeRestSeconds = 60;
+    private AnimationTimer currentRestAnimationTimer;
+
     private void showActualWorkoutLogger(Template template) {
         VBox root = new VBox(12);
         root.setPadding(new Insets(20));
@@ -370,15 +484,18 @@ public class StrongOpeningApp extends Application {
         Label header = new Label("FIGHTING: " + template.getTemplateName().toUpperCase());
         header.setStyle("-fx-font-size: 16px; -fx-text-fill: #00f0ff;");
 
-        // Rest Timer Display Component
         Label restTimerLabel = new Label("REST TIMER: --:--");
         restTimerLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #ff2a85; -fx-font-weight: bold;");
 
-        Button rest60Btn = new Button("START 60S REST");
-        rest60Btn.setStyle("-fx-font-size: 10px; -fx-background-color: #1a0b2e; -fx-text-fill: #00f0ff; -fx-border-color: #00f0ff;");
-        rest60Btn.setOnAction(e -> startRestCountdown(restTimerLabel, 60));
+        Button restMinus10Btn = new Button("-10S");
+        Button restPlus10Btn = new Button("+10S");
+        Button startRestBtn = new Button("START 60S");
 
-        HBox restBox = new HBox(10, restTimerLabel, rest60Btn);
+        restMinus10Btn.setOnAction(e -> activeRestSeconds = Math.max(0, activeRestSeconds - 10));
+        restPlus10Btn.setOnAction(e -> activeRestSeconds += 10);
+        startRestBtn.setOnAction(e -> startRestCountdownDynamic(restTimerLabel, 60));
+
+        HBox restBox = new HBox(8, restTimerLabel, startRestBtn, restMinus10Btn, restPlus10Btn);
         restBox.setAlignment(Pos.CENTER);
 
         VBox exercisesContainer = new VBox(15);
@@ -388,7 +505,6 @@ public class StrongOpeningApp extends Application {
             Label exLabel = new Label(ex.getName().toUpperCase() + " (" + ex.getMuscleGroup() + ")");
             exLabel.setStyle("-fx-text-fill: #ff2a85; -fx-font-weight: bold;");
 
-            // --- Warm-Up Set Row ---
             TextField warmUpWeight = new TextField();
             warmUpWeight.setPromptText("W-WEIGHT");
             TextField warmUpReps = new TextField();
@@ -396,7 +512,6 @@ public class StrongOpeningApp extends Application {
             HBox warmUpRow = new HBox(10, new Label("WARM-UP:"), warmUpWeight, warmUpReps);
             warmUpRow.setAlignment(Pos.CENTER_LEFT);
 
-            // --- Working Set Row ---
             TextField workWeight = new TextField();
             workWeight.setPromptText("WORK WEIGHT");
             TextField workReps = new TextField();
@@ -408,13 +523,12 @@ public class StrongOpeningApp extends Application {
             exBox.setStyle("-fx-border-color: #1a0b2e; -fx-border-width: 1px; -fx-padding: 8px; -fx-background-color: #120926;");
             exercisesContainer.getChildren().add(exBox);
 
-            // Track working set for database commit (we can log main working set data)
             inputRows.add(new ExerciseInputRow(ex.getId(), workWeight, workReps));
         }
 
         ScrollPane scrollPane = new ScrollPane(exercisesContainer);
         scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(320);
+        scrollPane.setPrefHeight(300);
 
         Button finishBtn = new Button("COMMIT & SAVE WORKOUT");
         finishBtn.setMaxWidth(Double.MAX_VALUE);
@@ -442,23 +556,25 @@ public class StrongOpeningApp extends Application {
 
         root.getChildren().addAll(header, restBox, scrollPane, finishBtn, backBtn);
 
-        createStyledScene(root, 460, 620);
+        createStyledScene(root, 480, 620);
     }
 
-    /**
-     * Arcade Rest Timer Countdown Helper.
-     */
-    private void startRestCountdown(Label timerLabel, int secondsTotal) {
-        final int[] timeLeft = {secondsTotal};
-        AnimationTimer restTimer = new AnimationTimer() {
+    private void startRestCountdownDynamic(Label timerLabel, int initialSeconds) {
+        if (currentRestAnimationTimer != null) {
+            currentRestAnimationTimer.stop();
+        }
+
+        activeRestSeconds = initialSeconds;
+        currentRestAnimationTimer = new AnimationTimer() {
             private long lastUpdate = 0;
+
             @Override
             public void handle(long now) {
                 if (now - lastUpdate >= 1_000_000_000L) {
-                    if (timeLeft[0] > 0) {
-                        timerLabel.setText(String.format("REST TIMER: 00:%02d", timeLeft[0]));
+                    if (activeRestSeconds > 0) {
+                        timerLabel.setText(String.format("REST: %02d:%02d", activeRestSeconds / 60, activeRestSeconds % 60));
                         timerLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #ff2a85; -fx-font-weight: bold;");
-                        timeLeft[0]--;
+                        activeRestSeconds--;
                     } else {
                         timerLabel.setText("REST OVER // FIGHT!");
                         timerLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #00f0ff; -fx-font-weight: bold;");
@@ -468,7 +584,7 @@ public class StrongOpeningApp extends Application {
                 }
             }
         };
-        restTimer.start();
+        currentRestAnimationTimer.start();
     }
  
     private void showHistoryScreen() {
@@ -509,6 +625,10 @@ public class StrongOpeningApp extends Application {
         Label header = new Label("REGISTER NEW EXERCISE");
         header.setStyle("-fx-font-size: 14px; -fx-text-fill: #ff2a85;");
 
+        // --- Manual Addition Section ---
+        Label manualLabel = new Label("MANUAL ENTRY:");
+        manualLabel.setStyle("-fx-text-fill: #e0aaff; -fx-font-size: 11px;");
+
         TextField nameField = new TextField();
         nameField.setPromptText("EXERCISE TITLE (E.G. NEON CURL)");
 
@@ -525,13 +645,54 @@ public class StrongOpeningApp extends Application {
             }
         });
 
-        Button backBtn = new Button("RETURN TO MENU");
-        backBtn.setMaxWidth(Double.MAX_VALUE);
-        backBtn.setOnAction(e -> showTemplateSelector());
+        // --- Cloud API Importer Section ---
+        Label cloudHeader = new Label("--- OR SYNC FROM CLOUD API ---");
+        cloudHeader.setStyle("-fx-text-fill: #00f0ff; -fx-font-size: 11px;");
 
-        root.getChildren().addAll(header, new Label("ENTER IDENTIFIER:"), nameField, saveBtn, backBtn);
+        TextField apiKeyField = new TextField();
+        apiKeyField.setPromptText("PASTE YOUR API-NINJAS KEY");
 
-        createStyledScene(root, 400, 360);
+        ComboBox<String> muscleSelector = new ComboBox<>();
+        muscleSelector.getItems().addAll("biceps", "triceps", "chest", "lats", "quads", "hamstrings", "shoulders");
+        muscleSelector.getSelectionModel().selectFirst();
+        muscleSelector.setMaxWidth(Double.MAX_VALUE);
+
+        Button fetchCloudBtn = new Button("DOWNLOAD EXERCISES");
+        fetchCloudBtn.setMaxWidth(Double.MAX_VALUE);
+        fetchCloudBtn.setStyle("-fx-background-color: #ff2a85; -fx-text-fill: #0b0614; -fx-font-weight: bold;");
+
+        fetchCloudBtn.setOnAction(e -> {
+            String key = apiKeyField.getText().trim();
+            String selectedMuscle = muscleSelector.getValue();
+            
+            if (key.isEmpty()) {
+                showAlert("API ERROR", "API key required to access cloud memory!");
+            } else {
+                DatabaseManager.importExercisesFromApi(key, selectedMuscle);
+                showAlert("SYNC COMPLETE", "Cloud exercise data loaded into local core memory!");
+                showTemplateSelector();
+            }
+        });
+
+        Button returnMenuBtn = new Button("RETURN TO MENU");
+        returnMenuBtn.setMaxWidth(Double.MAX_VALUE);
+        returnMenuBtn.setOnAction(e -> showTemplateSelector());
+
+        // Add all unique nodes cleanly to the root container without duplication
+        root.getChildren().addAll(
+            header, 
+            manualLabel, 
+            nameField, 
+            saveBtn, 
+            cloudHeader, 
+            apiKeyField, 
+            muscleSelector, 
+            fetchCloudBtn, 
+            new Label(""), 
+            returnMenuBtn
+        );
+
+        createStyledScene(root, 420, 580);
     }
 
     private void showPrScreen() {
