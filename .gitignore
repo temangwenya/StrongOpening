@@ -1,0 +1,16 @@
+# Compiled Java classes
+*.class
+bin/
+out/
+
+# SQLite database files (we want local data to stay local, not push test data to GitHub)
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE settings
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
