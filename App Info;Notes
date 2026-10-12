@@ -14,4 +14,7 @@
  * Option to have notes attached to workouts
  * Media displaying how workout is supposed to be done
  * Camera tracks body movement to see whether form is good or no
- * Option to set a weakly goal then you get a progress bar correlating to how well you've been doing
+ * Option to set a weekly goal then you get a progress bar correlating to how well you've been doing
+ * Rest Timer Overlay: Add an arcade-style countdown timer (with a synthwave alert sound/color flash) between sets.
+ * Data Export/Analytics: Export your workout history to CSV or render simple volume progression charts.
+ 

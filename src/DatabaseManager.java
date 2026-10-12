@@ -92,6 +92,48 @@ public class DatabaseManager {
     }
 
     /**
+     * Creates a new routine template and maps selected exercises to it within a transaction.
+     */
+    public static boolean createTemplate(String templateName, List<Integer> exerciseIds) {
+        String insertTemplateSql = "INSERT INTO templates (template_name) VALUES (?)";
+        String insertMappingSql = "INSERT INTO template_exercises (template_id, exercise_id) VALUES (?, ?)";
+
+        try (Connection conn = connect()) {
+            conn.setAutoCommit(false); // Begin transaction
+
+            int templateId = -1;
+            try (PreparedStatement stmt = conn.prepareStatement(insertTemplateSql, Statement.RETURN_GENERATED_KEYS)) {
+                stmt.setString(1, templateName);
+                stmt.executeUpdate();
+                
+                try (ResultSet rs = stmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        templateId = rs.getInt(1);
+                    }
+                }
+            }
+
+            if (templateId != -1) {
+                try (PreparedStatement mappingStmt = conn.prepareStatement(insertMappingSql)) {
+                    for (int exId : exerciseIds) {
+                        mappingStmt.setInt(1, templateId);
+                        mappingStmt.setInt(2, exId);
+                        mappingStmt.addBatch();
+                    }
+                    mappingStmt.executeBatch();
+                }
+            }
+
+            conn.commit(); // Commit transaction
+            return true;
+        } catch (SQLException e) {
+            System.out.println("Error creating routine template: " + e.getMessage());
+            return false;
+        }
+    }
+
+    
+    /**
      * Inserts a new exercise into the database.
      */
     public static void insertExercise(String name, String muscleGroup, String mediaPath) {

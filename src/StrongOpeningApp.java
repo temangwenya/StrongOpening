@@ -1,9 +1,8 @@
 /**
  * File Info:
- * Main JavaFX Application class for the StrongOpening application.
- * Orchestrates the retro fighting game landing screen, arcade dashboard, 
- * fighter-select spring bounce animations, active workout logger, history logbook, 
- * PR tracking, and CSS styling injection.
+ * Main JavaFX Application class for StrongOpening. Features a Tokyo Arcade synthwave 
+ * aesthetic, retro fighting game landing screen, interactive fighter-select bounce cards, 
+ * routine creator GUI, active workout logger, and modular scene navigation.
  */
 
 import javafx.application.Application;
@@ -21,52 +20,39 @@ import java.util.List;
 
 public class StrongOpeningApp extends Application {
 
-    // Central primary stage reference for window management and scene transitions
     private Stage primaryStage;
 
-    /**
-     * JavaFX application entry point.
-     * Initializes window parameters, verifies database relational schemas, 
-     * and boots into the retro arcade fighting game landing page.
-     */
     @Override
     public void start(Stage stage) {
         this.primaryStage = stage;
         primaryStage.setTitle("STRONG OPENING // ARCADE TERMINAL");
 
-        // Ensure all SQLite database tables are created on launch[cite: 1, 2]
         DatabaseManager.createTables();
 
-        // Boot into the arcade fighting game title screen[cite: 2]
         showLandingScreen();
     }
 
     /**
-     * Landing Screen: Retro arcade fighting game title screen.
-     * Features cyberpunk neon styling, glowing drop shadows, and a flashing "PRESS START" button.
+     * Landing Screen: Retro arcade fighting game title screen with 
+     * intense cyberpunk gradients, glowing title text, and a flashing "PRESS START" prompt.
      */
     private void showLandingScreen() {
         VBox root = new VBox(25);
         root.setPadding(new Insets(40));
         root.setAlignment(Pos.CENTER);
 
-        // Subtitle header matching the Neo-Tokyo arcade theme
         Label subTitle = new Label("NEO-TOKYO LIFTING LEAGUE");
         subTitle.setStyle("-fx-font-size: 14px; -fx-text-fill: #00f0ff; -fx-effect: dropshadow(three-pass-box, rgba(0, 240, 255, 0.6), 8, 0.0, 0, 0);");
 
-        // Main game title styling (Strong)
         Label titleMain = new Label("STRONG");
         titleMain.setStyle("-fx-font-size: 42px; -fx-font-weight: bold; -fx-text-fill: #ff2a85; -fx-effect: dropshadow(three-pass-box, rgba(255, 42, 133, 0.8), 12, 0.0, 0, 0);");
 
-        // Main game title styling (Opening)
         Label titleSub = new Label("OPENING");
         titleSub.setStyle("-fx-font-size: 38px; -fx-font-weight: bold; -fx-text-fill: #9d4edd; -fx-effect: dropshadow(three-pass-box, rgba(157, 78, 221, 0.8), 12, 0.0, 0, 0);");
 
-        // Flavor arcade tag line
         Label flavorLabel = new Label("INSERT COIN TO BUILD MASS");
         flavorLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #e0aaff;");
 
-        // Flashing "PRESS START" coin action button
         Button startCoinBtn = new Button(">> PRESS START TO LIFT <<");
         startCoinBtn.setStyle(
             "-fx-background-color: #ff2a85; " +
@@ -79,13 +65,12 @@ public class StrongOpeningApp extends Application {
             "-fx-border-width: 2px;"
         );
 
-        // Animation timer to create a pulsing arcade cabinet button effect
         AnimationTimer pulseTimer = new AnimationTimer() {
             private long lastUpdate = 0;
             private boolean bright = true;
             @Override
             public void handle(long now) {
-                if (now - lastUpdate > 500_000_000) { // Toggle every 0.5 seconds
+                if (now - lastUpdate > 500_000_000) {
                     bright = !bright;
                     if (bright) {
                         startCoinBtn.setStyle(
@@ -102,7 +87,6 @@ public class StrongOpeningApp extends Application {
         };
         pulseTimer.start();
 
-        // Transition from landing page to main routine dashboard
         startCoinBtn.setOnAction(e -> {
             pulseTimer.stop();
             showTemplateSelector();
@@ -114,9 +98,7 @@ public class StrongOpeningApp extends Application {
     }
  
     /**
-     * Screen 1: Main Routine Selector & Dashboard.
-     * Features an interactive fighting-game character select card that slides and spring-bounces 
-     * when a routine is clicked, alongside structured grid controls.
+     * Screen 1: Main arcade dashboard featuring fighter-select slide-and-bounce mechanics.
      */
     private void showTemplateSelector() {
         List<Template> templates = DatabaseManager.getAllTemplates();
@@ -165,7 +147,6 @@ public class StrongOpeningApp extends Application {
             }
         });
 
-        // Trigger the arcade slide-and-bounce spring animation when a routine is selected
         listView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 cardTitle.setText("FIGHTER: " + newVal.getTemplateName().toUpperCase());
@@ -178,6 +159,10 @@ public class StrongOpeningApp extends Application {
         Button startWorkoutBtn = new Button("START WORKOUT");
         startWorkoutBtn.setMaxWidth(Double.MAX_VALUE);
         startButtonAction(listView, startWorkoutBtn);
+
+        Button createRoutineBtn = new Button("CREATE ROUTINE");
+        createRoutineBtn.setMaxWidth(Double.MAX_VALUE);
+        createRoutineBtn.setOnAction(e -> showCreateRoutineScreen());
 
         Button historyBtn = new Button("VIEW HISTORY");
         historyBtn.setMaxWidth(Double.MAX_VALUE);
@@ -205,30 +190,94 @@ public class StrongOpeningApp extends Application {
             }
         });
 
-        // Clean structured 2x2 grid layout for dashboard controls
+        // Structured 3x2 Grid for Dashboard Controls
         GridPane buttonGrid = new GridPane();
         buttonGrid.setHgap(10);
         buttonGrid.setVgap(10);
         buttonGrid.setAlignment(Pos.CENTER);
         buttonGrid.add(startWorkoutBtn, 0, 0, 2, 1);
-        buttonGrid.add(historyBtn, 0, 1);
-        buttonGrid.add(prBtn, 1, 1);
-        buttonGrid.add(addExerciseBtn, 0, 2);
-        buttonGrid.add(deleteBtn, 1, 2);
+        buttonGrid.add(createRoutineBtn, 0, 1);
+        buttonGrid.add(historyBtn, 1, 1);
+        buttonGrid.add(prBtn, 0, 2);
+        buttonGrid.add(addExerciseBtn, 1, 2);
+        buttonGrid.add(deleteBtn, 0, 3, 2, 1);
 
         root.getChildren().addAll(titleLabel, characterCard, new Label("CHOOSE ROUTINE MODULE:"), listView, buttonGrid);
 
-        createStyledScene(root, 420, 620);
+        createStyledScene(root, 440, 660);
+    }
+
+    /**
+     * Screen 2: Routine Creator GUI.
+     * Allows building custom workout templates by specifying a routine name and selecting exercises.
+     */
+    private void showCreateRoutineScreen() {
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
+        root.setAlignment(Pos.CENTER);
+
+        Label header = new Label("CONSTRUCT NEW ROUTINE MODULE");
+        header.setStyle("-fx-font-size: 14px; -fx-text-fill: #ff2a85;");
+
+        TextField routineNameField = new TextField();
+        routineNameField.setPromptText("ROUTINE TITLE (E.G. PUSH DAY A)");
+
+        Label selectLabel = new Label("SELECT EXERCISES TO INCLUDE:");
+        
+        List<Exercise> allExercises = DatabaseManager.getAllExercises();
+        ListView<CheckBox> exerciseListView = new ListView<>();
+        
+        for (Exercise ex : allExercises) {
+            CheckBox cb = new CheckBox(ex.getName().toUpperCase() + " (" + ex.getMuscleGroup() + ")");
+            cb.setUserData(ex.getId());
+            cb.setStyle("-fx-text-fill: #00f0ff; -fx-font-family: 'Courier New', monospace;");
+            exerciseListView.getItems().add(cb);
+        }
+        exerciseListView.setPrefHeight(180);
+
+        Button saveBtn = new Button("BUILD ROUTINE MODULE");
+        saveBtn.setMaxWidth(Double.MAX_VALUE);
+        saveBtn.setOnAction(e -> {
+            String name = routineNameField.getText().trim();
+            List<Integer> selectedIds = new ArrayList<>();
+            
+            for (CheckBox cb : exerciseListView.getItems()) {
+                if (cb.isSelected()) {
+                    selectedIds.add((Integer) cb.getUserData());
+                }
+            }
+
+            if (name.isEmpty()) {
+                showAlert("ERROR", "Routine title cannot be blank.");
+            } else if (selectedIds.isEmpty()) {
+                showAlert("ERROR", "Select at least one exercise for the routine.");
+            } else {
+                boolean success = DatabaseManager.createTemplate(name, selectedIds);
+                if (success) {
+                    showAlert("SUCCESS", "Routine module successfully compiled into core memory!");
+                    showTemplateSelector();
+                } else {
+                    showAlert("DATABASE ERROR", "Failed to compile routine module.");
+                }
+            }
+        });
+
+        Button backBtn = new Button("RETURN TO MENU");
+        backBtn.setMaxWidth(Double.MAX_VALUE);
+        backBtn.setOnAction(e -> showTemplateSelector());
+
+        root.getChildren().addAll(header, routineNameField, selectLabel, exerciseListView, saveBtn, backBtn);
+
+        createStyledScene(root, 440, 540);
     }
 
     /**
      * Arcade Fighter Select Slide & Bounce Animation Helper.
-     * Simulates a classic fighting game character select snap-in with an elastic spring overshoot.
      */
     private void playArcadeBounceAnimation(VBox card) {
         AnimationTimer bounceTimer = new AnimationTimer() {
             private long startTime = -1;
-            private final double duration = 300_000_000.0; // 300ms duration
+            private final double duration = 300_000_000.0;
 
             @Override
             public void handle(long now) {
@@ -242,7 +291,6 @@ public class StrongOpeningApp extends Application {
                     card.setScaleY(1.0);
                     stop();
                 } else {
-                    // Ease-out elastic calculation for bounce effect
                     double easeOutElastic = 1 + --progress * progress * progress * (2.7 * progress + 1.7);
                     double translation = -100 * (1 - easeOutElastic);
                     card.setTranslateX(translation);
@@ -252,10 +300,6 @@ public class StrongOpeningApp extends Application {
         bounceTimer.start();
     }
 
-    /**
-     * Screen 2: Active Workout Logger Screen.
-     * Generates input fields for weight and reps for each exercise mapped to the selected template.
-     */
     private void showActiveWorkoutScreen(Template template) {
         VBox root = new VBox(12);
         root.setPadding(new Insets(20));
@@ -303,6 +347,7 @@ public class StrongOpeningApp extends Application {
                 DatabaseManager.logWorkout(template.getId(), setsToLog);
                 showAlert("SUCCESS", "Workout telemetry recorded!");
                 showTemplateSelector();
+
             } catch (NumberFormatException ex) {
                 showAlert("INPUT ERROR", "Numeric values required for weight & reps.");
             }
@@ -317,10 +362,6 @@ public class StrongOpeningApp extends Application {
         createStyledScene(root, 440, 520);
     }
 
-    /**
-     * Screen 3: Workout History Logbook View.
-     * Displays past completed workout sets ordered chronologically.
-     */
     private void showHistoryScreen() {
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -351,10 +392,6 @@ public class StrongOpeningApp extends Application {
         createStyledScene(root, 440, 480);
     }
 
-    /**
-     * Screen 4: Add Custom Exercise Form.
-     * Allows registering new custom exercises directly into the database.
-     */
     private void showAddExerciseScreen() {
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -388,10 +425,6 @@ public class StrongOpeningApp extends Application {
         createStyledScene(root, 400, 360);
     }
 
-    /**
-     * Screen 5: Personal Records View.
-     * Queries and displays all-time maximum weight records per exercise.
-     */
     private void showPrScreen() {
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -421,9 +454,6 @@ public class StrongOpeningApp extends Application {
         createStyledScene(root, 440, 480);
     }
 
-    /**
-     * Helper action binder for selecting and starting workout routines.
-     */
     private void startButtonAction(ListView<Template> listView, Button btn) {
         btn.setOnAction(e -> {
             Template selectedTemplate = listView.getSelectionModel().getSelectedItem();
@@ -435,9 +465,6 @@ public class StrongOpeningApp extends Application {
         });
     }
 
-    /**
-     * Standardized arcade pop-up alert dialog utility.
-     */
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -446,9 +473,6 @@ public class StrongOpeningApp extends Application {
         alert.showAndWait();
     }
 
-    /**
-     * Data Transfer Object class for tracking input controls during active workout sessions.
-     */
     private static class ExerciseInputRow {
         int exerciseId;
         TextField weightField;
@@ -461,10 +485,6 @@ public class StrongOpeningApp extends Application {
         }
     }
 
-    /**
-     * Centralized scene builder helper.
-     * Injects the cyberpunk arcade stylesheet (`style.css`), updates stage settings, and displays the window.
-     */
     private Scene createStyledScene(VBox root, double width, double height) {
         Scene scene = new Scene(root, width, height);
         try {
@@ -483,9 +503,6 @@ public class StrongOpeningApp extends Application {
         return scene;
     }
 
-    /**
-     * Main application execution launcher.
-     */
     public static void main(String[] args) {
         launch(args);
     }
