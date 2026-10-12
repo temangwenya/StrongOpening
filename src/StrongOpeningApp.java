@@ -359,8 +359,8 @@ public class StrongOpeningApp extends Application {
         matchIntroTimer.start();
     }
 
-    /**
-     * Active Workout Logger Screen with Rest Timer Overlay capability.
+   /**
+     * Active Workout Logger Screen with Warm-Up Sets and Rest Timer Overlay.
      */
     private void showActualWorkoutLogger(Template template) {
         VBox root = new VBox(12);
@@ -381,30 +381,40 @@ public class StrongOpeningApp extends Application {
         HBox restBox = new HBox(10, restTimerLabel, rest60Btn);
         restBox.setAlignment(Pos.CENTER);
 
-        VBox exercisesContainer = new VBox(12);
+        VBox exercisesContainer = new VBox(15);
         List<ExerciseInputRow> inputRows = new ArrayList<>();
 
         for (Exercise ex : template.getExercises()) {
             Label exLabel = new Label(ex.getName().toUpperCase() + " (" + ex.getMuscleGroup() + ")");
-            
-            TextField weightField = new TextField();
-            weightField.setPromptText("WEIGHT");
-            
-            TextField repsField = new TextField();
-            repsField.setPromptText("REPS");
+            exLabel.setStyle("-fx-text-fill: #ff2a85; -fx-font-weight: bold;");
 
-            HBox setRow = new HBox(10, new Label("SET 1:"), weightField, repsField);
-            setRow.setAlignment(Pos.CENTER_LEFT);
+            // --- Warm-Up Set Row ---
+            TextField warmUpWeight = new TextField();
+            warmUpWeight.setPromptText("W-WEIGHT");
+            TextField warmUpReps = new TextField();
+            warmUpReps.setPromptText("W-REPS");
+            HBox warmUpRow = new HBox(10, new Label("WARM-UP:"), warmUpWeight, warmUpReps);
+            warmUpRow.setAlignment(Pos.CENTER_LEFT);
+
+            // --- Working Set Row ---
+            TextField workWeight = new TextField();
+            workWeight.setPromptText("WORK WEIGHT");
+            TextField workReps = new TextField();
+            workReps.setPromptText("WORK REPS");
+            HBox workRow = new HBox(10, new Label("SET 1:   "), workWeight, workReps);
+            workRow.setAlignment(Pos.CENTER_LEFT);
             
-            VBox exBox = new VBox(5, exLabel, setRow);
+            VBox exBox = new VBox(6, exLabel, warmUpRow, workRow);
+            exBox.setStyle("-fx-border-color: #1a0b2e; -fx-border-width: 1px; -fx-padding: 8px; -fx-background-color: #120926;");
             exercisesContainer.getChildren().add(exBox);
 
-            inputRows.add(new ExerciseInputRow(ex.getId(), weightField, repsField));
+            // Track working set for database commit (we can log main working set data)
+            inputRows.add(new ExerciseInputRow(ex.getId(), workWeight, workReps));
         }
 
         ScrollPane scrollPane = new ScrollPane(exercisesContainer);
         scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(250);
+        scrollPane.setPrefHeight(320);
 
         Button finishBtn = new Button("COMMIT & SAVE WORKOUT");
         finishBtn.setMaxWidth(Double.MAX_VALUE);
@@ -432,7 +442,7 @@ public class StrongOpeningApp extends Application {
 
         root.getChildren().addAll(header, restBox, scrollPane, finishBtn, backBtn);
 
-        createStyledScene(root, 440, 540);
+        createStyledScene(root, 460, 620);
     }
 
     /**
